@@ -1,0 +1,56 @@
+{
+  "name": "match-kit",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Introduce Pattern Matching for TypeScript.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dingff/match-kit.git"
+  },
+  "keywords": [
+    "pattern matching",
+    "pattern",
+    "match",
+    "matching",
+    "typescript",
+    "type safe",
+    "switch"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build:wasm": "wasm-pack build --no-typescript --target bundler --release --out-dir ./dist/wasm --no-pack",
+    "build": "rslib build && npm run build:wasm && rm -f ./dist/wasm/.gitignore",
+    "check": "biome check --write",
+    "dev": "rslib build --watch",
+    "format": "biome format --write",
+    "test": "wasm-pack test --chrome",
+    "release": "npm run build && release-it --only-version",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@rslib/core": "^0.6.5",
+    "@types/node": "^22.8.1",
+    "typescript": "^5.8.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "release-it": "^18.1.2",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@release-it/conventional-changelog": "^10.0.0"
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
+  },
+  "lint-staged": {
+    "*": ["biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"]
+  }
+}

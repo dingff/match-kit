@@ -1,0 +1,483 @@
+use js_sys::{Function, Object, Reflect, JSON};
+use regex::Regex;
+use wasm_bindgen::prelude::*;
+
+// 静态常量（内部使用）
+static SOME_VALUE: &str = "__SOME__";
+static NONE_VALUE: &str = "__NONE__";
+static DEFAULT_HANDLER: &str = "_";
+
+// 前缀常量
+static PREFIX_ANY: &str = "any::";
+static PREFIX_NOT: &str = "not::";
+static PREFIX_REGEX: &str = "regex::";
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "Function")]
+    pub type PatternHandler;
+
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+
+    #[wasm_bindgen(js_namespace = console)]
+    fn warn(s: &str);
+}
+
+// 导出常量为函数
+#[wasm_bindgen]
+pub fn some() -> String {
+    SOME_VALUE.to_string()
+}
+
+#[wasm_bindgen]
+pub fn none() -> String {
+    NONE_VALUE.to_string()
+}
+
+// 判断 JS 值的类型
+#[inline]
+fn js_typeof(value: &JsValue) -> &'static str {
+    if value.is_string() {
+        "string"
+    } else if value.as_f64().is_some() {
+        "number"
+    } else if value.as_bool().is_some() {
+        "boolean"
+    } else if value.is_null() {
+        "null"
+    } else if value.is_undefined() {
+        "undefined"
+    } else {
+        "object"
+    }
+}
+
+// 序列化单个值为模式格式
+#[inline]
+fn encode_value(value: &JsValue) -> Result<String, JsValue> {
+    let value_type = js_typeof(value);
+    if value.is_undefined() {
+        Ok(format!("{{\"t\":\"undefined\"}}"))
+    } else {
+        match JSON::stringify(value) {
+            Ok(json_value) => Ok(format!("{{\"t\":\"{}\",\"v\":{}}}", value_type, json_value)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub fn not(args: &js_sys::Array) -> Result<String, JsValue> {
+    let length = args.length();
+
+    if length == 0 {
+        return Err(JsValue::from_str("not() requires at least one value"));
+    }
+
+    let mut encoded_values = Vec::with_capacity(length as usize);
+    for i in 0..length {
+        let value = args.get(i);
+        match encode_value(&value) {
+            Ok(encoded) => encoded_values.push(encoded),
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(format!("{}{}", PREFIX_NOT, encoded_values.join("|")))
+}
+
+#[wasm_bindgen]
+pub fn any(args: &js_sys::Array) -> Result<String, JsValue> {
+    let length = args.length();
+
+    if length == 0 {
+        return Err(JsValue::from_str("any() requires at least one value"));
+    }
+
+    let mut encoded_values = Vec::with_capacity(length as usize);
+    for i in 0..length {
+        let value = args.get(i);
+        match encode_value(&value) {
+            Ok(encoded) => encoded_values.push(encoded),
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(format!("{}{}", PREFIX_ANY, encoded_values.join("|")))
+}
+
+#[wasm_bindgen]
+pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
+    let flags_str = flags.unwrap_or_default();
+
+    // 验证正则表达式
+    let regex_str = if flags_str.is_empty() {
+        pattern.to_string()
+    } else {
+        format!("(?{}){}", flags_str, pattern)
+    };
+
+    match Regex::new(&regex_str) {
+        Ok(_) => Ok(format!("{}{}::{}", PREFIX_REGEX, pattern, flags_str)),
+        Err(e) => Err(JsValue::from_str(&format!(
+            "Invalid regex pattern: {} with flags: {} - {}",
+            pattern, flags_str, e
+        ))),
+    }
+}
+
+// 将通配符转换为正则表达式
+fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
+    // 转义特殊字符
+    let mut regex_str = String::with_capacity(pattern.len() * 2);
+    for c in pattern.chars() {
+        match c {
+            '*' => regex_str.push_str(".*"),
+            '?' => regex_str.push('.'),
+            '.' | '+' | '^' | '$' | '{' | '}' | '(' | ')' | '|' | '[' | ']' | '\\' => {
+                regex_str.push('\\');
+                regex_str.push(c);
+            }
+            _ => regex_str.push(c),
+        }
+    }
+
+    // 构建完整的正则表达式
+    regex_str = format!("^{}$", regex_str);
+
+    // 添加不区分大小写标志
+    let regex_str = if !case_sensitive {
+        format!("(?i){}", regex_str)
+    } else {
+        regex_str
+    };
+
+    Regex::new(&regex_str).unwrap()
+}
+
+// 创建正则表达式
+fn create_regex(pattern: &str, flags: &str) -> Regex {
+    let regex_str = if flags.contains('i') {
+        format!("(?i){}", pattern)
+    } else {
+        pattern.to_string()
+    };
+
+    Regex::new(&regex_str).unwrap()
+}
+
+// 解析并比较编码的值
+fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -> bool {
+    match JSON::parse(encoded) {
+        Ok(val_obj) => {
+            let val_type = match Reflect::get(&val_obj, &JsValue::from_str("t"))
+                .ok()
+                .and_then(|t| t.as_string())
+            {
+                Some(t) => t,
+                None => return false,
+            };
+            // 只包含 t 字段时（如 undefined）
+            if val_type == "undefined" && value.is_undefined() {
+                return true;
+            }
+            let value_type = js_typeof(value);
+
+            // 其它类型，继续比较 v 字段
+            let val = match Reflect::get(&val_obj, &JsValue::from_str("v")) {
+                Ok(v) => v,
+                Err(_) => return false,
+            };
+
+            if val_type == value_type {
+                if val_type == "string" {
+                    let val_str = val.as_string().unwrap();
+                    let value_str = value.as_string().unwrap();
+
+                    if val_str == value_str
+                        || (!case_sensitive && val_str.to_lowercase() == value_str.to_lowercase())
+                    {
+                        return true;
+                    }
+                } else if val == *value {
+                    return true;
+                }
+            }
+            false
+        }
+        Err(_) => {
+            warn(&format!("Failed to parse: {}", encoded));
+            false
+        }
+    }
+}
+// 处理多模式匹配
+fn match_multi_pattern(
+    value: &JsValue,
+    entries: &[(String, JsValue)],
+    prefix: &str,
+    case_sensitive: bool,
+    match_fn: impl Fn(bool) -> bool,
+) -> Option<JsValue> {
+    for (pattern, handler) in entries {
+        if pattern.starts_with(prefix) {
+            let values_part = &pattern[prefix.len()..];
+            let values: Vec<&str> = values_part.split('|').collect();
+
+            let mut matched = false;
+            for val_str in values {
+                if compare_encoded_value(val_str, value, case_sensitive) {
+                    matched = true;
+                    break;
+                }
+            }
+
+            if match_fn(matched) {
+                if let Some(func) = handler.dyn_ref::<Function>() {
+                    return func.call0(&JsValue::NULL).ok();
+                }
+            }
+        }
+    }
+
+    None
+}
+
+// 获取值的字符串表示
+fn get_string_value(value: &JsValue) -> String {
+    if value.is_null() {
+        return "null".to_string();
+    } else if value.is_undefined() {
+        return "undefined".to_string();
+    } else if let Some(str_val) = value.as_string() {
+        return str_val;
+    } else if let Ok(json_val) = JSON::stringify(value) {
+        if let Some(str_val) = json_val.as_string() {
+            return str_val;
+        }
+    }
+
+    "[object Object]".to_string()
+}
+// 分类后的模式
+struct PatternGroups {
+    any: Vec<(String, JsValue)>,      // any 模式
+    not: Vec<(String, JsValue)>,      // not 模式
+    regex: Vec<(String, JsValue)>,    // regex 模式
+    wildcard: Vec<(String, JsValue)>, // 通配符模式
+}
+impl PatternGroups {
+    // 构造函数：从JS对象创建分类后的模式组
+    fn from_object(obj: &Object) -> Self {
+        let keys = Object::keys(obj);
+        let length = keys.length();
+
+        let mut any = Vec::new();
+        let mut not = Vec::new();
+        let mut regex = Vec::new();
+        let mut wildcard = Vec::new();
+
+        for i in 0..length {
+            let key = keys.get(i);
+            if let Some(key_str) = key.as_string() {
+                // 跳过特殊键，它们将通过直接访问获得
+                if key_str == SOME_VALUE || key_str == NONE_VALUE || key_str == DEFAULT_HANDLER {
+                    continue;
+                }
+                if let Ok(value) = Reflect::get(obj, &key) {
+                    if key_str.starts_with(PREFIX_ANY) {
+                        any.push((key_str, value));
+                    } else if key_str.starts_with(PREFIX_NOT) {
+                        not.push((key_str, value));
+                    } else if key_str.starts_with(PREFIX_REGEX) {
+                        regex.push((key_str, value));
+                    } else if key_str.contains('*') || key_str.contains('?') {
+                        wildcard.push((key_str, value));
+                    }
+                }
+            }
+        }
+
+        // 按通配符数量排序（较少的优先）
+        wildcard.sort_by(|(pat_a, _), (pat_b, _)| {
+            let wildcard_count_a = pat_a.chars().filter(|&c| c == '*' || c == '?').count();
+            let wildcard_count_b = pat_b.chars().filter(|&c| c == '*' || c == '?').count();
+            wildcard_count_a.cmp(&wildcard_count_b)
+        });
+
+        Self {
+            any,
+            not,
+            regex,
+            wildcard,
+        }
+    }
+}
+#[wasm_bindgen(js_name = "match")]
+pub fn match_pattern(
+    value: &JsValue,
+    patterns: &Object,
+    options: Option<Object>,
+) -> Result<JsValue, JsValue> {
+    // 处理选项
+    let case_sensitive = if let Some(opts) = options {
+        match Reflect::get(&opts, &JsValue::from_str("caseSensitive")) {
+            Ok(val) => !val.is_falsy(),
+            _ => true,
+        }
+    } else {
+        true
+    };
+
+    // Some/None 匹配逻辑
+    if !value.is_null() && !value.is_undefined() {
+        if let Ok(some_handler) = Reflect::get(patterns, &JsValue::from_str(SOME_VALUE)) {
+            if let Some(func) = some_handler.dyn_ref::<Function>() {
+                return func.call0(&JsValue::NULL).map_err(|e| e);
+            }
+        }
+    } else if let Ok(none_handler) = Reflect::get(patterns, &JsValue::from_str(NONE_VALUE)) {
+        if let Some(func) = none_handler.dyn_ref::<Function>() {
+            return func.call0(&JsValue::NULL).map_err(|e| e);
+        }
+    }
+
+    // 值的字符串表示
+    let string_value = get_string_value(value);
+
+    // 检查精确匹配
+    if let Ok(handler) = Reflect::get(patterns, &JsValue::from_str(&string_value)) {
+        if let Some(func) = handler.dyn_ref::<Function>() {
+            return func.call0(&JsValue::NULL).map_err(|e| e);
+        }
+    }
+
+    let pattern_groups = PatternGroups::from_object(patterns);
+
+    // any 模式
+    if let Some(result) = match_multi_pattern(
+        value,
+        &pattern_groups.any,
+        PREFIX_ANY,
+        case_sensitive,
+        |matched| matched,
+    ) {
+        return Ok(result);
+    }
+
+    // not 模式
+    if let Some(result) = match_multi_pattern(
+        value,
+        &pattern_groups.not,
+        PREFIX_NOT,
+        case_sensitive,
+        |matched| !matched,
+    ) {
+        return Ok(result);
+    }
+
+    // 检查正则表达式模式
+    for (pattern, handler) in &pattern_groups.regex {
+        if pattern.starts_with(PREFIX_REGEX) {
+            let parts: Vec<&str> = pattern.splitn(3, "::").collect();
+            if parts.len() >= 2 {
+                let regex_pattern = parts[1];
+                let flags = if parts.len() > 2 { parts[2] } else { "" };
+
+                // 合并用户提供的flags和全局caseSensitive选项
+                let effective_flags = if !case_sensitive && !flags.contains('i') {
+                    format!("{}i", flags)
+                } else {
+                    flags.to_string()
+                };
+
+                let regex = create_regex(regex_pattern, &effective_flags);
+                if regex.is_match(&string_value) {
+                    if let Some(func) = handler.dyn_ref::<Function>() {
+                        return func.call0(&JsValue::NULL).map_err(|e| e);
+                    }
+                }
+            }
+        }
+    }
+    // 处理通配符模式（仅对字符串类型有效）
+    if value.is_string() {
+        let value_str = value.as_string().unwrap();
+
+        // 检查每个通配符模式 (已预先排序)
+        for (pattern, handler) in &pattern_groups.wildcard {
+            let regex = wildcard_to_regex(pattern, case_sensitive);
+            if regex.is_match(&value_str) {
+                if let Some(func) = handler.dyn_ref::<Function>() {
+                    return func.call0(&JsValue::NULL).map_err(|e| e);
+                }
+            }
+        }
+    }
+
+    // 获取默认处理器
+    let default_handler = Reflect::get(patterns, &JsValue::from_str(DEFAULT_HANDLER)).ok();
+    // 使用默认处理器
+    if let Some(default_handler) = default_handler {
+        if let Some(func) = default_handler.dyn_ref::<Function>() {
+            return func.call0(&JsValue::NULL).map_err(|e| e);
+        }
+    }
+
+    // 没有匹配的模式，抛出错误
+    let keys = Object::keys(patterns);
+    let attempted_patterns: Vec<String> = (0..keys.length())
+        .filter_map(|i| keys.get(i).as_string())
+        .collect();
+
+    let error_msg = format!(
+        "No pattern matched for: {}. Attempted patterns: {}",
+        string_value,
+        attempted_patterns.join(", ")
+    );
+
+    Err(JsValue::from_str(&error_msg))
+}
+
+#[wasm_bindgen(js_name = "ifLet")]
+pub fn if_let(value: &JsValue, pattern: &JsValue, handler: &Function) -> JsValue {
+    let pattern_str = get_string_value(pattern);
+
+    // 创建临时模式对象
+    let patterns = Object::new();
+    let _ = Reflect::set(&patterns, &JsValue::from_str(&pattern_str), handler);
+    let _ = Reflect::set(
+        &patterns,
+        &JsValue::from_str(DEFAULT_HANDLER),
+        &Function::new_no_args("return undefined;"),
+    );
+
+    match match_pattern(value, &patterns, None) {
+        Ok(result) => result,
+        Err(_) => JsValue::undefined(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn matches(value: &JsValue, pattern: &JsValue, options: Option<Object>) -> bool {
+    let pattern_str = get_string_value(pattern);
+
+    // 创建临时模式对象
+    let patterns = Object::new();
+    let _ = Reflect::set(
+        &patterns,
+        &JsValue::from_str(&pattern_str),
+        &Function::new_no_args("return true;"),
+    );
+    let _ = Reflect::set(
+        &patterns,
+        &JsValue::from_str(DEFAULT_HANDLER),
+        &Function::new_no_args("return false;"),
+    );
+
+    match match_pattern(value, &patterns, options) {
+        Ok(result) => !result.is_falsy(),
+        Err(_) => false,
+    }
+}
