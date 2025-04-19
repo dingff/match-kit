@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/dingff/match-kit/compare/0.0.2...0.0.3) (2025-04-19)
+
+
+### Bug Fixes
+
+* remove unused comments ([9f8a044](https://github.com/dingff/match-kit/commit/9f8a0445ae0a00a6b1df6fae21912f1bfd1fbf06))
+
 ## [0.0.2](https://github.com/dingff/match-kit/compare/0.0.1...0.0.2) (2025-04-19)
 
 
