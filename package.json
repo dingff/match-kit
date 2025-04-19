@@ -1,6 +1,6 @@
 {
   "name": "match-kit",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Introduce Pattern Matching for TypeScript.",
   "repository": {
@@ -24,7 +24,9 @@
   },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build:wasm": "wasm-pack build --no-typescript --target bundler --release --out-dir ./dist/wasm --no-pack",
     "build": "rslib build && npm run build:wasm && rm -f ./dist/wasm/.gitignore",
@@ -48,9 +50,13 @@
     "@release-it/conventional-changelog": "^10.0.0"
   },
   "commitlint": {
-    "extends": ["@commitlint/config-conventional"]
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
   },
   "lint-staged": {
-    "*": ["biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"]
+    "*": [
+      "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+    ]
   }
 }
