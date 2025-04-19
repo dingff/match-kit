@@ -200,7 +200,7 @@ fn test_case_sensitive_option() {
     let mut options = Object::new();
     Reflect::set(
         &mut options,
-        &JsValue::from_str("case_sensitive"),
+        &JsValue::from_str("caseSensitive"),
         &JsValue::from_bool(true),
     )
     .unwrap();
@@ -213,7 +213,7 @@ fn test_case_sensitive_option() {
     );
     Reflect::set(
         &mut options,
-        &JsValue::from_str("case_sensitive"),
+        &JsValue::from_str("caseSensitive"),
         &JsValue::from_bool(false),
     )
     .unwrap();
@@ -342,5 +342,127 @@ fn test_undefined_some_none() {
             .as_string()
             .unwrap(),
         "none"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_wildcard_case_insensitive() {
+    let patterns = Object::new();
+    let f = Function::new_no_args("return 'wild';");
+    Reflect::set(&patterns, &JsValue::from_str("foo*bar"), &f).unwrap();
+    let v = JsValue::from_str("FOOzzzBAR");
+    let mut options = Object::new();
+    Reflect::set(
+        &mut options,
+        &JsValue::from_str("caseSensitive"),
+        &JsValue::from_bool(false),
+    )
+    .unwrap();
+    let result = match_pattern(&v, &patterns, Some(options));
+    assert_eq!(result.unwrap().as_string().unwrap(), "wild");
+}
+
+#[wasm_bindgen_test]
+fn test_regex_case_insensitive_option() {
+    let pat = regex("^foo$", None).unwrap();
+    let patterns = Object::new();
+    let f = Function::new_no_args("return 'regex';");
+    Reflect::set(&patterns, &JsValue::from_str(&pat), &f).unwrap();
+    let v = JsValue::from_str("FOO");
+    let mut options = Object::new();
+    Reflect::set(
+        &mut options,
+        &JsValue::from_str("caseSensitive"),
+        &JsValue::from_bool(false),
+    )
+    .unwrap();
+    let result = match_pattern(&v, &patterns, Some(options));
+    assert_eq!(result.unwrap().as_string().unwrap(), "regex");
+}
+
+#[wasm_bindgen_test]
+fn test_any_not_mixed_types() {
+    let arr = Array::new();
+    arr.push(&JsValue::from(1));
+    arr.push(&JsValue::from_str("a"));
+    let any_pat = any(&arr.clone().into()).unwrap();
+    let not_pat = not(&arr.clone().into()).unwrap();
+    let patterns = Object::new();
+    let f_any = Function::new_no_args("return 'any';");
+    let f_not = Function::new_no_args("return 'not';");
+    Reflect::set(&patterns, &JsValue::from_str(&any_pat), &f_any).unwrap();
+    Reflect::set(&patterns, &JsValue::from_str(&not_pat), &f_not).unwrap();
+    let v1 = JsValue::from(1);
+    let v2 = JsValue::from_str("a");
+    let v3 = JsValue::from(true);
+    assert_eq!(
+        match_pattern(&v1, &patterns, None)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "any"
+    );
+    assert_eq!(
+        match_pattern(&v2, &patterns, None)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "any"
+    );
+    assert_eq!(
+        match_pattern(&v3, &patterns, None)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "not"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_wildcard_match_empty_string() {
+    let patterns = Object::new();
+    let f = Function::new_no_args("return 'wild';");
+    Reflect::set(&patterns, &JsValue::from_str("*"), &f).unwrap();
+    let v = JsValue::from_str("");
+    let result = match_pattern(&v, &patterns, None);
+    assert_eq!(result.unwrap().as_string().unwrap(), "wild");
+}
+
+#[wasm_bindgen_test]
+fn test_pattern_handler_non_function() {
+    let patterns = Object::new();
+    Reflect::set(
+        &patterns,
+        &JsValue::from_str("foo"),
+        &JsValue::from_str("not_fn"),
+    )
+    .unwrap();
+    let v = JsValue::from_str("foo");
+    let err = match_pattern(&v, &patterns, None).unwrap_err();
+    assert!(err.as_string().unwrap().contains("No pattern matched"));
+}
+
+#[wasm_bindgen_test]
+fn test_pattern_key_undefined_null() {
+    let patterns = Object::new();
+    let f_undef = Function::new_no_args("return 'undef';");
+    let f_null = Function::new_no_args("return 'null';");
+    Reflect::set(&patterns, &JsValue::from_str("undefined"), &f_undef).unwrap();
+    Reflect::set(&patterns, &JsValue::from_str("null"), &f_null).unwrap();
+    let v_undef = JsValue::UNDEFINED;
+    let v_null = JsValue::NULL;
+    assert_eq!(
+        match_pattern(&v_undef, &patterns, None)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "undef"
+    );
+    assert_eq!(
+        match_pattern(&v_null, &patterns, None)
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "null"
     );
 }
