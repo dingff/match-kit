@@ -1,3 +1,4 @@
+import type { MatchValue, Options, PatternHandler, PatternMap } from './types'
 import {
   any as _any,
   ifLet as _ifLet,
@@ -9,46 +10,33 @@ import {
   some as _some,
 } from './wasm/match_kit'
 
-type MatchValue = string | number | boolean | null | undefined
+export const Some: string = _some()
 
-const Some: string = _some()
-const None: string = _none()
-function not(...values: MatchValue[]): string {
+export const None: string = _none()
+
+export function not(...values: MatchValue[]): string {
   return _not(values)
 }
-function any(...values: MatchValue[]): string {
+
+export function any(...values: MatchValue[]): string {
   return _any(values)
 }
 
-function regex(pattern: string, flags?: string): string {
+export function regex(pattern: string, flags?: string): string {
   return _regex(pattern, flags)
-}
-
-type PatternHandler<R> = () => R
-type PatternMap<R> = {
-  /**
-   * The special key '_' is used for the default handler.
-   */
-  [pattern: string]: PatternHandler<R>
 }
 
 /**
  * The patterns for match must be exhaustive. If you only care about one case, ifLet is more suitable.
  */
-function match<R>(
-  value: MatchValue,
-  patterns: PatternMap<R>,
-  options?: {
-    caseSensitive?: boolean
-  },
-): R {
+export function match<R>(value: MatchValue, patterns: PatternMap<R>, options?: Options): R {
   return _match(value, patterns, options)
 }
 
 /**
  * If value matches pattern, execute handler and return its result, otherwise return undefined.
  */
-function ifLet<R>(
+export function ifLet<R>(
   value: MatchValue,
   pattern: MatchValue,
   handler: PatternHandler<R>,
@@ -59,14 +47,6 @@ function ifLet<R>(
 /**
  * Determine whether value matches the given pattern, returns true or false.
  */
-function matches(
-  value: MatchValue,
-  pattern: MatchValue,
-  options?: {
-    caseSensitive?: boolean
-  },
-): boolean {
+export function matches(value: MatchValue, pattern: MatchValue, options?: Options): boolean {
   return _matches(value, pattern, options)
 }
-
-export { match, ifLet, matches, Some, None, any, not, regex }

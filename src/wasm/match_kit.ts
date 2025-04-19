@@ -1,36 +1,14 @@
-export function some(): string {
-  return ''
-}
-export function none(): string {
-  return ''
-}
-export function not(args: any[]): any {
-  console.log(args)
-}
-export function any(args: any[]): any {
-  console.log(args)
-}
-export function regex(pattern: any, flags?: any): any {
-  console.log(pattern, flags)
-}
-export function match(
-  value: any,
-  patterns: any,
-  options?: {
-    caseSensitive?: boolean
-  },
-): any {
-  console.log(value, patterns, options)
-}
-export function ifLet(value: any, pattern: any, handler: any): any {
-  console.log(value, pattern, handler)
-}
-export function matches(
-  value: any,
-  pattern: any,
-  options?: {
-    caseSensitive?: boolean
-  },
-): any {
-  console.log(value, pattern, options)
-}
+import type { MatchValue, Options, PatternHandler, PatternMap } from '../types'
+
+export declare function some(): string
+export declare function none(): string
+export declare function not(args: MatchValue[]): string
+export declare function any(args: MatchValue[]): string
+export declare function regex(pattern: string, flags?: string): string
+export declare function match<R>(value: MatchValue, patterns: PatternMap<R>, options?: Options): R
+export declare function ifLet<R>(
+  value: MatchValue,
+  pattern: MatchValue,
+  handler: PatternHandler<R>,
+): R | undefined
+export declare function matches(value: MatchValue, pattern: MatchValue, options?: Options): boolean
