@@ -225,8 +225,8 @@ const displayResult = match(data, {
 
 When multiple patterns could match a value, the following priority rules apply:
 
-1. Exact matches take highest priority
-2. `Some` and `None` special patterns
+1. `Some` and `None` special patterns take highest priority
+2. Exact matches (string/number/boolean)
 3. `any` and `not` patterns
 4. Regular expression patterns
 5. Wildcard patterns (with patterns having fewer wildcards taking precedence)
