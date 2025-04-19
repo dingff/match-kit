@@ -217,7 +217,6 @@ fn test_case_sensitive_option() {
         &JsValue::from_bool(false),
     )
     .unwrap();
-    // 不区分大小写时，优先匹配第一个分支
     let result = match_pattern(&v, &patterns, Some(options));
     let s = result.unwrap().as_string().unwrap();
     assert!(s == "upper" || s == "lower");
@@ -225,7 +224,6 @@ fn test_case_sensitive_option() {
 
 #[wasm_bindgen_test]
 fn test_any_not_regex_empty_or_invalid() {
-    // any 空集合
     let arr = Array::new();
     let any_pat = any(&arr.clone().into());
     assert!(any_pat.is_err());
@@ -237,7 +235,6 @@ fn test_wildcard_non_string_value() {
     let f_wild = Function::new_no_args("return 'wild';");
     Reflect::set(&patterns, &JsValue::from_str("foo*bar"), &f_wild).unwrap();
     let v = JsValue::from(123);
-    // wildcard 只对字符串有效，非字符串走 default
     let f_def = Function::new_no_args("return 'def';");
     Reflect::set(&patterns, &JsValue::from_str("_"), &f_def).unwrap();
     assert_eq!(
@@ -280,7 +277,6 @@ fn test_priority_order() {
     Reflect::set(&patterns, &JsValue::from_str(&regex_pat), &f_regex).unwrap();
     Reflect::set(&patterns, &JsValue::from_str("_"), &f_def).unwrap();
     let v = JsValue::from_str("foo");
-    // 优先级：精确 > any > regex > default
     assert_eq!(
         match_pattern(&v, &patterns, None)
             .unwrap()

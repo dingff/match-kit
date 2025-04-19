@@ -27,13 +27,13 @@ function regex(pattern: string, flags?: string): string {
 type PatternHandler<R> = () => R
 type PatternMap<R> = {
   /**
-   * 特殊键 '_' 表示默认处理
+   * The special key '_' is used for the default handler.
    */
   [pattern: string]: PatternHandler<R>
 }
 
 /**
- * match 的模式必须是穷尽的，如果你只关心一种情况，ifLet 更适合
+ * The patterns for match must be exhaustive. If you only care about one case, ifLet is more suitable.
  */
 function match<R>(
   value: MatchValue,
@@ -46,7 +46,7 @@ function match<R>(
 }
 
 /**
- * 如果 value 匹配 pattern，则执行 handler 并返回其结果，否则返回 undefined
+ * If value matches pattern, execute handler and return its result, otherwise return undefined.
  */
 function ifLet<R>(
   value: MatchValue,
@@ -57,7 +57,7 @@ function ifLet<R>(
 }
 
 /**
- * 判断 value 是否匹配给定的 pattern，返回 true 或 false
+ * Determine whether value matches the given pattern, returns true or false.
  */
 function matches(
   value: MatchValue,

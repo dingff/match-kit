@@ -2,12 +2,10 @@ use js_sys::{Function, Object, Reflect, JSON};
 use regex::Regex;
 use wasm_bindgen::prelude::*;
 
-// 静态常量（内部使用）
 static SOME_VALUE: &str = "__SOME__";
 static NONE_VALUE: &str = "__NONE__";
 static DEFAULT_HANDLER: &str = "_";
 
-// 前缀常量
 static PREFIX_ANY: &str = "any::";
 static PREFIX_NOT: &str = "not::";
 static PREFIX_REGEX: &str = "regex::";
@@ -24,7 +22,6 @@ extern "C" {
     fn warn(s: &str);
 }
 
-// 导出常量为函数
 #[wasm_bindgen]
 pub fn some() -> String {
     SOME_VALUE.to_string()
@@ -35,7 +32,6 @@ pub fn none() -> String {
     NONE_VALUE.to_string()
 }
 
-// 判断 JS 值的类型
 #[inline]
 fn js_typeof(value: &JsValue) -> &'static str {
     if value.is_string() {
@@ -53,7 +49,6 @@ fn js_typeof(value: &JsValue) -> &'static str {
     }
 }
 
-// 序列化单个值为模式格式
 #[inline]
 fn encode_value(value: &JsValue) -> Result<String, JsValue> {
     let value_type = js_typeof(value);
@@ -111,7 +106,6 @@ pub fn any(args: &js_sys::Array) -> Result<String, JsValue> {
 pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
     let flags_str = flags.unwrap_or_default();
 
-    // 验证正则表达式
     let regex_str = if flags_str.is_empty() {
         pattern.to_string()
     } else {
@@ -127,9 +121,7 @@ pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
     }
 }
 
-// 将通配符转换为正则表达式
 fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
-    // 转义特殊字符
     let mut regex_str = String::with_capacity(pattern.len() * 2);
     for c in pattern.chars() {
         match c {
@@ -143,10 +135,8 @@ fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
         }
     }
 
-    // 构建完整的正则表达式
     regex_str = format!("^{}$", regex_str);
 
-    // 添加不区分大小写标志
     let regex_str = if !case_sensitive {
         format!("(?i){}", regex_str)
     } else {
@@ -156,7 +146,6 @@ fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
     Regex::new(&regex_str).unwrap()
 }
 
-// 创建正则表达式
 fn create_regex(pattern: &str, flags: &str) -> Regex {
     let regex_str = if flags.contains('i') {
         format!("(?i){}", pattern)
@@ -167,7 +156,6 @@ fn create_regex(pattern: &str, flags: &str) -> Regex {
     Regex::new(&regex_str).unwrap()
 }
 
-// 解析并比较编码的值
 fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -> bool {
     match JSON::parse(encoded) {
         Ok(val_obj) => {
@@ -178,13 +166,11 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
                 Some(t) => t,
                 None => return false,
             };
-            // 只包含 t 字段时（如 undefined）
             if val_type == "undefined" && value.is_undefined() {
                 return true;
             }
             let value_type = js_typeof(value);
 
-            // 其它类型，继续比较 v 字段
             let val = match Reflect::get(&val_obj, &JsValue::from_str("v")) {
                 Ok(v) => v,
                 Err(_) => return false,
@@ -212,7 +198,6 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
         }
     }
 }
-// 处理多模式匹配
 fn match_multi_pattern(
     value: &JsValue,
     entries: &[(String, JsValue)],
@@ -244,7 +229,6 @@ fn match_multi_pattern(
     None
 }
 
-// 获取值的字符串表示
 fn get_string_value(value: &JsValue) -> String {
     if value.is_null() {
         return "null".to_string();
@@ -260,15 +244,13 @@ fn get_string_value(value: &JsValue) -> String {
 
     "[object Object]".to_string()
 }
-// 分类后的模式
 struct PatternGroups {
-    any: Vec<(String, JsValue)>,      // any 模式
-    not: Vec<(String, JsValue)>,      // not 模式
-    regex: Vec<(String, JsValue)>,    // regex 模式
-    wildcard: Vec<(String, JsValue)>, // 通配符模式
+    any: Vec<(String, JsValue)>,
+    not: Vec<(String, JsValue)>,
+    regex: Vec<(String, JsValue)>,
+    wildcard: Vec<(String, JsValue)>,
 }
 impl PatternGroups {
-    // 构造函数：从JS对象创建分类后的模式组
     fn from_object(obj: &Object) -> Self {
         let keys = Object::keys(obj);
         let length = keys.length();
@@ -281,7 +263,6 @@ impl PatternGroups {
         for i in 0..length {
             let key = keys.get(i);
             if let Some(key_str) = key.as_string() {
-                // 跳过特殊键，它们将通过直接访问获得
                 if key_str == SOME_VALUE || key_str == NONE_VALUE || key_str == DEFAULT_HANDLER {
                     continue;
                 }
@@ -299,7 +280,6 @@ impl PatternGroups {
             }
         }
 
-        // 按通配符数量排序（较少的优先）
         wildcard.sort_by(|(pat_a, _), (pat_b, _)| {
             let wildcard_count_a = pat_a.chars().filter(|&c| c == '*' || c == '?').count();
             let wildcard_count_b = pat_b.chars().filter(|&c| c == '*' || c == '?').count();
@@ -320,7 +300,6 @@ pub fn match_pattern(
     patterns: &Object,
     options: Option<Object>,
 ) -> Result<JsValue, JsValue> {
-    // 处理选项
     let case_sensitive = if let Some(opts) = options {
         match Reflect::get(&opts, &JsValue::from_str("caseSensitive")) {
             Ok(val) => !val.is_falsy(),
@@ -330,7 +309,6 @@ pub fn match_pattern(
         true
     };
 
-    // Some/None 匹配逻辑
     if !value.is_null() && !value.is_undefined() {
         if let Ok(some_handler) = Reflect::get(patterns, &JsValue::from_str(SOME_VALUE)) {
             if let Some(func) = some_handler.dyn_ref::<Function>() {
@@ -343,10 +321,8 @@ pub fn match_pattern(
         }
     }
 
-    // 值的字符串表示
     let string_value = get_string_value(value);
 
-    // 检查精确匹配
     if let Ok(handler) = Reflect::get(patterns, &JsValue::from_str(&string_value)) {
         if let Some(func) = handler.dyn_ref::<Function>() {
             return func.call0(&JsValue::NULL).map_err(|e| e);
@@ -355,7 +331,6 @@ pub fn match_pattern(
 
     let pattern_groups = PatternGroups::from_object(patterns);
 
-    // any 模式
     if let Some(result) = match_multi_pattern(
         value,
         &pattern_groups.any,
@@ -366,7 +341,6 @@ pub fn match_pattern(
         return Ok(result);
     }
 
-    // not 模式
     if let Some(result) = match_multi_pattern(
         value,
         &pattern_groups.not,
@@ -377,7 +351,6 @@ pub fn match_pattern(
         return Ok(result);
     }
 
-    // 检查正则表达式模式
     for (pattern, handler) in &pattern_groups.regex {
         if pattern.starts_with(PREFIX_REGEX) {
             let parts: Vec<&str> = pattern.splitn(3, "::").collect();
@@ -385,7 +358,6 @@ pub fn match_pattern(
                 let regex_pattern = parts[1];
                 let flags = if parts.len() > 2 { parts[2] } else { "" };
 
-                // 合并用户提供的flags和全局caseSensitive选项
                 let effective_flags = if !case_sensitive && !flags.contains('i') {
                     format!("{}i", flags)
                 } else {
@@ -401,11 +373,9 @@ pub fn match_pattern(
             }
         }
     }
-    // 处理通配符模式（仅对字符串类型有效）
     if value.is_string() {
         let value_str = value.as_string().unwrap();
 
-        // 检查每个通配符模式 (已预先排序)
         for (pattern, handler) in &pattern_groups.wildcard {
             let regex = wildcard_to_regex(pattern, case_sensitive);
             if regex.is_match(&value_str) {
@@ -416,16 +386,13 @@ pub fn match_pattern(
         }
     }
 
-    // 获取默认处理器
     let default_handler = Reflect::get(patterns, &JsValue::from_str(DEFAULT_HANDLER)).ok();
-    // 使用默认处理器
     if let Some(default_handler) = default_handler {
         if let Some(func) = default_handler.dyn_ref::<Function>() {
             return func.call0(&JsValue::NULL).map_err(|e| e);
         }
     }
 
-    // 没有匹配的模式，抛出错误
     let keys = Object::keys(patterns);
     let attempted_patterns: Vec<String> = (0..keys.length())
         .filter_map(|i| keys.get(i).as_string())
@@ -444,7 +411,6 @@ pub fn match_pattern(
 pub fn if_let(value: &JsValue, pattern: &JsValue, handler: &Function) -> JsValue {
     let pattern_str = get_string_value(pattern);
 
-    // 创建临时模式对象
     let patterns = Object::new();
     let _ = Reflect::set(&patterns, &JsValue::from_str(&pattern_str), handler);
     let _ = Reflect::set(
@@ -463,7 +429,6 @@ pub fn if_let(value: &JsValue, pattern: &JsValue, handler: &Function) -> JsValue
 pub fn matches(value: &JsValue, pattern: &JsValue, options: Option<Object>) -> bool {
     let pattern_str = get_string_value(pattern);
 
-    // 创建临时模式对象
     let patterns = Object::new();
     let _ = Reflect::set(
         &patterns,
