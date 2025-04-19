@@ -110,7 +110,7 @@ Create a pattern that matches if the value matches the given regular expression.
 ```typescript
 match(value, {
   [regex('^[0-9]+$')]: () => 'This is a number!',
-  [regex(/^[A-Z]+$/, 'i')]: () => 'This contains only letters!'
+  [regex('^[A-Z]+$', 'i')]: () => 'This contains only letters!'
 })
 ```
 
