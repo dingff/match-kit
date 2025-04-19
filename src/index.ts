@@ -7,7 +7,7 @@ import {
   not as _not,
   regex as _regex,
   some as _some,
-} from './wasm/match-kit'
+} from './wasm/match_kit'
 
 type MatchValue = string | number | boolean | null | undefined
 

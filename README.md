@@ -26,7 +26,7 @@ const result = match(greeting, {
   _: () => 'Default case 🤷‍♂️',
 });
 
-console.log(result); // Outputs: 'Exact match! 👌'
+console.log(result);
 ```
 
 ## 🧩 Features
