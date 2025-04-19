@@ -1,6 +1,6 @@
 {
   "name": "match-kit",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "type": "module",
   "description": "Introduce Pattern Matching for TypeScript.",
   "repository": {
