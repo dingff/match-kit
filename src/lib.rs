@@ -1,4 +1,4 @@
-use js_sys::{Function, Object, Reflect, JSON};
+use js_sys::{Function, Object, Reflect};
 use regex::Regex;
 use wasm_bindgen::prelude::*;
 
@@ -9,18 +9,6 @@ static DEFAULT_HANDLER: &str = "_";
 static PREFIX_ANY: &str = "any::";
 static PREFIX_NOT: &str = "not::";
 static PREFIX_REGEX: &str = "regex::";
-
-#[wasm_bindgen]
-extern "C" {
-  #[wasm_bindgen(typescript_type = "Function")]
-  pub type PatternHandler;
-
-  #[wasm_bindgen(js_namespace = console)]
-  fn log(s: &str);
-
-  #[wasm_bindgen(js_namespace = console)]
-  fn warn(s: &str);
-}
 
 #[wasm_bindgen]
 pub fn some() -> String {
@@ -45,7 +33,7 @@ fn js_typeof(value: &JsValue) -> &'static str {
   } else if value.is_undefined() {
     "undefined"
   } else {
-    "object"
+    "unknown"
   }
 }
 
@@ -59,17 +47,7 @@ fn encode_value(value: &JsValue) -> Result<String, JsValue> {
     "string" => format!("string{}{}", SEP, value.as_string().unwrap_or_default()),
     "number" => format!("number{}{}", SEP, value.as_f64().unwrap_or(0.0)),
     "boolean" => format!("boolean{}{}", SEP, value.as_bool().unwrap_or(false)),
-    _ => {
-      // fallback to JSON for object
-      match JSON::stringify(value) {
-        Ok(json_value) => format!(
-          "object{}{}",
-          SEP,
-          json_value.as_string().unwrap_or_default()
-        ),
-        Err(e) => return Err(e),
-      }
-    }
+    _ => return Err(JsValue::from_str("Unsupported value type")),
   };
   Ok(encoded)
 }
@@ -119,15 +97,23 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
         .map(|v| v == value_bool)
         .unwrap_or(false)
     }
-    "object" => {
-      // fallback to JSON string compare
-      match JSON::stringify(value) {
-        Ok(json_value) => val_str == json_value.as_string().unwrap_or_default(),
-        Err(_) => false,
-      }
-    }
     _ => false,
   }
+}
+
+fn get_string_value(value: &JsValue) -> String {
+  if value.is_null() {
+    return "null".to_string();
+  } else if value.is_undefined() {
+    return "undefined".to_string();
+  } else if let Some(str_val) = value.as_string() {
+    return str_val;
+  } else if let Some(num_val) = value.as_f64() {
+    return num_val.to_string();
+  } else if let Some(bool_val) = value.as_bool() {
+    return bool_val.to_string();
+  }
+  "unknown".to_string()
 }
 
 #[wasm_bindgen]
@@ -255,21 +241,6 @@ fn try_composite_pattern(
   None
 }
 
-fn get_string_value(value: &JsValue) -> String {
-  if value.is_null() {
-    return "null".to_string();
-  } else if value.is_undefined() {
-    return "undefined".to_string();
-  } else if let Some(str_val) = value.as_string() {
-    return str_val;
-  } else if let Ok(json_val) = JSON::stringify(value) {
-    if let Some(str_val) = json_val.as_string() {
-      return str_val;
-    }
-  }
-
-  "[object Object]".to_string()
-}
 struct PatternGroups {
   any: Vec<(String, JsValue)>,
   not: Vec<(String, JsValue)>,
@@ -281,10 +252,10 @@ impl PatternGroups {
     let keys = Object::keys(obj);
     let length = keys.length();
 
-    let mut any = Vec::new();
-    let mut not = Vec::new();
-    let mut regex = Vec::new();
-    let mut wildcard = Vec::new();
+    let mut any = Vec::with_capacity(length as usize);
+    let mut not = Vec::with_capacity(length as usize);
+    let mut regex = Vec::with_capacity(length as usize);
+    let mut wildcard = Vec::with_capacity(length as usize);
 
     for i in 0..length {
       let key = keys.get(i);
@@ -420,8 +391,10 @@ pub fn match_pattern(
   }
 
   let keys = Object::keys(patterns);
-  let attempted_patterns: Vec<String> = (0..keys.length())
-    .filter_map(|i| keys.get(i).as_string())
+  let attempted_patterns: Vec<String> = keys
+    .to_vec()
+    .into_iter()
+    .filter_map(|v| v.as_string())
     .collect();
 
   let error_msg = format!(
