@@ -2,7 +2,7 @@
   "name": "match-kit",
   "version": "0.2.0",
   "type": "module",
-  "description": "Introduce Pattern Matching for TypeScript.",
+  "description": "Introduce pattern matching to TypeScript.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dingff/match-kit.git"
