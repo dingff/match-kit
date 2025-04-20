@@ -218,22 +218,20 @@ fn try_composite_pattern(
   match_fn: impl Fn(bool) -> bool,
 ) -> Option<JsValue> {
   for (pattern, handler) in entries {
-    if pattern.starts_with(prefix) {
-      let values_part = &pattern[prefix.len()..];
-      let values: Vec<&str> = values_part.split('|').collect();
+    let values_part = &pattern[prefix.len()..];
+    let values: Vec<&str> = values_part.split('|').collect();
 
-      let mut matched = false;
-      for val_str in values {
-        if compare_encoded_value(val_str, value, case_sensitive) {
-          matched = true;
-          break;
-        }
+    let mut matched = false;
+    for val_str in values {
+      if compare_encoded_value(val_str, value, case_sensitive) {
+        matched = true;
+        break;
       }
+    }
 
-      if match_fn(matched) {
-        if let Some(func) = handler.dyn_ref::<Function>() {
-          return func.call0(&JsValue::NULL).ok();
-        }
+    if match_fn(matched) {
+      if let Some(func) = handler.dyn_ref::<Function>() {
+        return func.call0(&JsValue::NULL).ok();
       }
     }
   }
@@ -349,23 +347,21 @@ pub fn match_pattern(
   }
 
   for (pattern, handler) in &pattern_groups.regex {
-    if pattern.starts_with(PREFIX_REGEX) {
-      let parts: Vec<&str> = pattern.splitn(3, "::").collect();
-      if parts.len() >= 2 {
-        let regex_pattern = parts[1];
-        let flags = if parts.len() > 2 { parts[2] } else { "" };
+    let parts: Vec<&str> = pattern.splitn(3, "::").collect();
+    if parts.len() >= 2 {
+      let regex_pattern = parts[1];
+      let flags = if parts.len() > 2 { parts[2] } else { "" };
 
-        let effective_flags = if !case_sensitive && !flags.contains('i') {
-          format!("{}i", flags)
-        } else {
-          flags.to_string()
-        };
+      let effective_flags = if !case_sensitive && !flags.contains('i') {
+        format!("{}i", flags)
+      } else {
+        flags.to_string()
+      };
 
-        let regex = create_regex(regex_pattern, &effective_flags);
-        if regex.is_match(&string_value) {
-          if let Some(func) = handler.dyn_ref::<Function>() {
-            return func.call0(&JsValue::NULL).map_err(|e| e);
-          }
+      let regex = create_regex(regex_pattern, &effective_flags);
+      if regex.is_match(&string_value) {
+        if let Some(func) = handler.dyn_ref::<Function>() {
+          return func.call0(&JsValue::NULL).map_err(|e| e);
         }
       }
     }
