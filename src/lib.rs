@@ -198,7 +198,7 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
         }
     }
 }
-fn match_multi_pattern(
+fn try_composite_pattern(
     value: &JsValue,
     entries: &[(String, JsValue)],
     prefix: &str,
@@ -331,7 +331,7 @@ pub fn match_pattern(
 
     let pattern_groups = PatternGroups::from_object(patterns);
 
-    if let Some(result) = match_multi_pattern(
+    if let Some(result) = try_composite_pattern(
         value,
         &pattern_groups.any,
         PREFIX_ANY,
@@ -341,7 +341,7 @@ pub fn match_pattern(
         return Ok(result);
     }
 
-    if let Some(result) = match_multi_pattern(
+    if let Some(result) = try_composite_pattern(
         value,
         &pattern_groups.not,
         PREFIX_NOT,
