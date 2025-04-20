@@ -366,14 +366,15 @@ pub fn match_pattern(
       }
     }
   }
-  if value.is_string() {
-    let value_str = value.as_string().unwrap();
 
-    for (pattern, handler) in &pattern_groups.wildcard {
-      let regex = wildcard_to_regex(pattern, case_sensitive);
-      if regex.is_match(&value_str) {
-        if let Some(func) = handler.dyn_ref::<Function>() {
-          return func.call0(&JsValue::NULL).map_err(|e| e);
+  if value.is_string() && !pattern_groups.wildcard.is_empty() {
+    if let Some(value_str) = value.as_string() {
+      for (pattern, handler) in &pattern_groups.wildcard {
+        let regex = wildcard_to_regex(pattern, case_sensitive);
+        if regex.is_match(&value_str) {
+          if let Some(func) = handler.dyn_ref::<Function>() {
+            return func.call0(&JsValue::NULL).map_err(|e| e);
+          }
         }
       }
     }
