@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/dingff/match-kit/compare/0.2.0...0.2.1) (2025-04-20)
+
+
+### Bug Fixes
+
+* correct description casing in package.json ([d52235f](https://github.com/dingff/match-kit/commit/d52235f247d9ced3fe46a32e3046817c3e56aa2e))
+* optimize string handling in match_pattern function ([eaf0b0d](https://github.com/dingff/match-kit/commit/eaf0b0d4f175752ef51f5e2f905c765c28dd7dea))
+
+
+### Performance Improvements
+
+* remove unused JSON handling and improve value type encoding ([6e497ac](https://github.com/dingff/match-kit/commit/6e497ac63777b6cee40ead3708ee8e77e07cf051))
+* simplify pattern matching logic in try_composite_pattern and match_pattern functions ([4fa20a8](https://github.com/dingff/match-kit/commit/4fa20a818c643343785ee0f0a10fd99d05be6e8e))
+
 # [0.2.0](https://github.com/dingff/match-kit/compare/0.1.2...0.2.0) (2025-04-20)
 
 ## [0.1.2](https://github.com/dingff/match-kit/compare/0.1.1...0.1.2) (2025-04-20)
