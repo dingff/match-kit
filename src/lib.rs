@@ -51,13 +51,72 @@ fn js_typeof(value: &JsValue) -> &'static str {
 
 #[inline]
 fn encode_value(value: &JsValue) -> Result<String, JsValue> {
-    if value.is_undefined() {
-        return Ok(String::from("{\"t\":\"undefined\"}"));
-    }
+    const SEP: char = '\x1F';
     let value_type = js_typeof(value);
-    match JSON::stringify(value) {
-        Ok(json_value) => Ok(format!("{{\"t\":\"{}\",\"v\":{}}}", value_type, json_value)),
-        Err(e) => Err(e),
+    let encoded = match value_type {
+        "undefined" => format!("undefined{}", SEP),
+        "null" => format!("null{}", SEP),
+        "string" => format!("string{}{}", SEP, value.as_string().unwrap_or_default()),
+        "number" => format!("number{}{}", SEP, value.as_f64().unwrap_or(0.0)),
+        "boolean" => format!("boolean{}{}", SEP, value.as_bool().unwrap_or(false)),
+        _ => {
+            // fallback to JSON for object
+            match JSON::stringify(value) {
+                Ok(json_value) => format!("object{}{}", SEP, json_value.as_string().unwrap_or_default()),
+                Err(e) => return Err(e),
+            }
+        }
+    };
+    Ok(encoded)
+}
+
+fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -> bool {
+    const SEP: char = '\x1F';
+    if !encoded.contains(SEP) {
+        return false;
+    }
+    let mut parts = encoded.splitn(2, SEP);
+    let val_type = parts.next().unwrap_or("");
+    let val_str = parts.next().unwrap_or("");
+
+    if val_type == "undefined" && value.is_undefined() {
+        return true;
+    }
+    if val_type == "null" && value.is_null() {
+        return true;
+    }
+
+    let value_type = js_typeof(value);
+
+    if val_type != value_type {
+        return false;
+    }
+
+    match value_type {
+        "string" => {
+            let value_str = value.as_string().unwrap_or_default();
+            if case_sensitive {
+                val_str == value_str
+            } else {
+                val_str.eq_ignore_ascii_case(&value_str)
+            }
+        }
+        "number" => {
+            let value_num = value.as_f64().unwrap_or(0.0);
+            val_str.parse::<f64>().map(|v| v == value_num).unwrap_or(false)
+        }
+        "boolean" => {
+            let value_bool = value.as_bool().unwrap_or(false);
+            val_str.parse::<bool>().map(|v| v == value_bool).unwrap_or(false)
+        }
+        "object" => {
+            // fallback to JSON string compare
+            match JSON::stringify(value) {
+                Ok(json_value) => val_str == json_value.as_string().unwrap_or_default(),
+                Err(_) => false,
+            }
+        }
+        _ => false,
     }
 }
 
@@ -155,48 +214,6 @@ fn create_regex(pattern: &str, flags: &str) -> Regex {
     Regex::new(&regex_str).unwrap()
 }
 
-fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -> bool {
-    match JSON::parse(encoded) {
-        Ok(val_obj) => {
-            let val_type = match Reflect::get(&val_obj, &JsValue::from_str("t"))
-                .ok()
-                .and_then(|t| t.as_string())
-            {
-                Some(t) => t,
-                None => return false,
-            };
-            if val_type == "undefined" && value.is_undefined() {
-                return true;
-            }
-            let value_type = js_typeof(value);
-
-            let val = match Reflect::get(&val_obj, &JsValue::from_str("v")) {
-                Ok(v) => v,
-                Err(_) => return false,
-            };
-
-            if val_type == value_type {
-                if val_type == "string" {
-                    let val_str = val.as_string().unwrap();
-                    let value_str = value.as_string().unwrap();
-
-                    if val_str == value_str
-                        || (!case_sensitive && val_str.to_lowercase() == value_str.to_lowercase())
-                    {
-                        return true;
-                    }
-                } else if val == *value {
-                    return true;
-                }
-            }
-            false
-        }
-        Err(_) => {
-            warn(&format!("Failed to parse: {}", encoded));
-            false
-        }
-    }
-}
 fn try_composite_pattern(
     value: &JsValue,
     entries: &[(String, JsValue)],
