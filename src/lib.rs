@@ -51,14 +51,13 @@ fn js_typeof(value: &JsValue) -> &'static str {
 
 #[inline]
 fn encode_value(value: &JsValue) -> Result<String, JsValue> {
-    let value_type = js_typeof(value);
     if value.is_undefined() {
-        Ok(format!("{{\"t\":\"undefined\"}}"))
-    } else {
-        match JSON::stringify(value) {
-            Ok(json_value) => Ok(format!("{{\"t\":\"{}\",\"v\":{}}}", value_type, json_value)),
-            Err(e) => Err(e),
-        }
+        return Ok(String::from("{\"t\":\"undefined\"}"));
+    }
+    let value_type = js_typeof(value);
+    match JSON::stringify(value) {
+        Ok(json_value) => Ok(format!("{{\"t\":\"{}\",\"v\":{}}}", value_type, json_value)),
+        Err(e) => Err(e),
     }
 }
 
