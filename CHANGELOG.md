@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/dingff/match-kit/compare/0.2.2...0.2.3) (2025-04-21)
+
+
+### Features
+
+* enhance function documentation in index.ts ([f9ad462](https://github.com/dingff/match-kit/commit/f9ad462c068e0396bee11f55a5ad5734c51320de))
+
 ## [0.2.2](https://github.com/dingff/match-kit/compare/0.2.1...0.2.2) (2025-04-20)
 
 
