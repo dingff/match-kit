@@ -21,20 +21,29 @@ pub fn none() -> String {
   NONE_VALUE.to_string()
 }
 
+pub enum JsType {
+  String,
+  Number,
+  Boolean,
+  Null,
+  Undefined,
+  Unknown,
+}
+
 #[inline]
-fn js_typeof(value: &JsValue) -> &'static str {
+fn js_typeof(value: &JsValue) -> JsType {
   if value.is_string() {
-    "string"
+    JsType::String
   } else if value.as_f64().is_some() {
-    "number"
+    JsType::Number
   } else if value.as_bool().is_some() {
-    "boolean"
+    JsType::Boolean
   } else if value.is_null() {
-    "null"
+    JsType::Null
   } else if value.is_undefined() {
-    "undefined"
+    JsType::Undefined
   } else {
-    "unknown"
+    JsType::Unknown
   }
 }
 
@@ -42,12 +51,12 @@ fn js_typeof(value: &JsValue) -> &'static str {
 fn encode_value(value: &JsValue) -> Result<String, JsValue> {
   let value_type = js_typeof(value);
   let encoded = match value_type {
-    "undefined" => format!("undefined{}", SEP),
-    "null" => format!("null{}", SEP),
-    "string" => format!("string{}{}", SEP, value.as_string().unwrap_or_default()),
-    "number" => format!("number{}{}", SEP, value.as_f64().unwrap_or(0.0)),
-    "boolean" => format!("boolean{}{}", SEP, value.as_bool().unwrap_or(false)),
-    _ => return Err(JsValue::from_str("Unsupported value type")),
+    JsType::Undefined => format!("undefined{}", SEP),
+    JsType::Null => format!("null{}", SEP),
+    JsType::String => format!("string{}{}", SEP, value.as_string().unwrap_or_default()),
+    JsType::Number => format!("number{}{}", SEP, value.as_f64().unwrap_or(0.0)),
+    JsType::Boolean => format!("boolean{}{}", SEP, value.as_bool().unwrap_or(false)),
+    JsType::Unknown => return Err(JsValue::from_str("Unsupported value type")),
   };
   Ok(encoded)
 }
@@ -69,12 +78,8 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
 
   let value_type = js_typeof(value);
 
-  if val_type != value_type {
-    return false;
-  }
-
-  match value_type {
-    "string" => {
+  match (val_type, value_type) {
+    ("string", JsType::String) => {
       let value_str = value.as_string().unwrap_or_default();
       if case_sensitive {
         val_str == value_str
@@ -82,14 +87,14 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
         val_str.eq_ignore_ascii_case(&value_str)
       }
     }
-    "number" => {
+    ("number", JsType::Number) => {
       let value_num = value.as_f64().unwrap_or(0.0);
       val_str
         .parse::<f64>()
         .map(|v| v == value_num)
         .unwrap_or(false)
     }
-    "boolean" => {
+    ("boolean", JsType::Boolean) => {
       let value_bool = value.as_bool().unwrap_or(false);
       val_str
         .parse::<bool>()
