@@ -2,13 +2,14 @@ use js_sys::{Function, Object, Reflect};
 use regex::Regex;
 use wasm_bindgen::prelude::*;
 
-static SOME_VALUE: &str = "__SOME__";
-static NONE_VALUE: &str = "__NONE__";
-static DEFAULT_HANDLER: &str = "_";
+const SOME_VALUE: &str = "__SOME__";
+const NONE_VALUE: &str = "__NONE__";
+const DEFAULT_HANDLER: &str = "_";
 
-static PREFIX_ANY: &str = "any::";
-static PREFIX_NOT: &str = "not::";
-static PREFIX_REGEX: &str = "regex::";
+const PREFIX_ANY: &str = "any::";
+const PREFIX_NOT: &str = "not::";
+const PREFIX_REGEX: &str = "regex::";
+const SEP: char = '\x1F';
 
 #[wasm_bindgen]
 pub fn some() -> String {
@@ -39,7 +40,6 @@ fn js_typeof(value: &JsValue) -> &'static str {
 
 #[inline]
 fn encode_value(value: &JsValue) -> Result<String, JsValue> {
-  const SEP: char = '\x1F';
   let value_type = js_typeof(value);
   let encoded = match value_type {
     "undefined" => format!("undefined{}", SEP),
@@ -53,7 +53,6 @@ fn encode_value(value: &JsValue) -> Result<String, JsValue> {
 }
 
 fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -> bool {
-  const SEP: char = '\x1F';
   if !encoded.contains(SEP) {
     return false;
   }
