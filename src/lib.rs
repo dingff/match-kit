@@ -1,5 +1,5 @@
 use js_sys::{Function, Object, Reflect};
-use regex::Regex;
+use regex_lite::Regex;
 use wasm_bindgen::prelude::*;
 
 const SOME_VALUE: &str = "__SOME__";
@@ -158,6 +158,12 @@ pub fn any(args: &js_sys::Array) -> Result<String, JsValue> {
 pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
   let flags_str = flags.unwrap_or_default();
 
+  if flags_str.chars().any(|c| !"ims".contains(c)) {
+    return Err(JsValue::from_str(
+      "Only 'i', 'm', 's' flags are supported in regex",
+    ));
+  }
+
   let regex_str = if flags_str.is_empty() {
     pattern.to_string()
   } else {
@@ -199,13 +205,23 @@ fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
 }
 
 fn create_regex(pattern: &str, flags: &str) -> Regex {
-  let regex_str = if flags.contains('i') {
-    format!("(?i){}", pattern)
+  let mut prefix = String::from("(?");
+  let mut has_flag = false;
+  for ch in flags.chars() {
+    match ch {
+      'i' | 'm' | 's' => {
+        prefix.push(ch);
+        has_flag = true;
+      }
+      _ => {}
+    }
+  }
+  if has_flag {
+    prefix.push(')');
+    Regex::new(&format!("{}{}", prefix, pattern)).unwrap()
   } else {
-    pattern.to_string()
-  };
-
-  Regex::new(&regex_str).unwrap()
+    Regex::new(pattern).unwrap()
+  }
 }
 
 fn try_composite_pattern(
