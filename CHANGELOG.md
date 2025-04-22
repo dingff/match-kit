@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.4.0](https://github.com/dingff/match-kit/compare/0.3.0...0.4.0) (2025-04-22)
+
+
+### Performance Improvements
+
+* replace regex with regex-lite for improved performance and simplicity ([9e0e415](https://github.com/dingff/match-kit/commit/9e0e4154306da8cf72af60cc378dac46417bd424))
+
 # [0.3.0](https://github.com/dingff/match-kit/compare/0.2.3...0.3.0) (2025-04-22)
 
 
