@@ -89,17 +89,11 @@ fn compare_encoded_value(encoded: &str, value: &JsValue, case_sensitive: bool) -
     }
     ("number", JsType::Number) => {
       let value_num = value.as_f64().unwrap_or(0.0);
-      val_str
-        .parse::<f64>()
-        .map(|v| v == value_num)
-        .unwrap_or(false)
+      val_str.parse::<f64>().map_or(false, |v| v == value_num)
     }
     ("boolean", JsType::Boolean) => {
       let value_bool = value.as_bool().unwrap_or(false);
-      val_str
-        .parse::<bool>()
-        .map(|v| v == value_bool)
-        .unwrap_or(false)
+      val_str.parse::<bool>().map_or(false, |v| v == value_bool)
     }
     _ => false,
   }
@@ -311,12 +305,12 @@ pub fn match_pattern(
   if !value.is_null() && !value.is_undefined() {
     if let Ok(some_handler) = Reflect::get(patterns, &JsValue::from_str(SOME_VALUE)) {
       if let Some(func) = some_handler.dyn_ref::<Function>() {
-        return func.call0(&JsValue::NULL).map_err(|e| e);
+        return func.call0(&JsValue::NULL);
       }
     }
   } else if let Ok(none_handler) = Reflect::get(patterns, &JsValue::from_str(NONE_VALUE)) {
     if let Some(func) = none_handler.dyn_ref::<Function>() {
-      return func.call0(&JsValue::NULL).map_err(|e| e);
+      return func.call0(&JsValue::NULL);
     }
   }
 
@@ -324,7 +318,7 @@ pub fn match_pattern(
 
   if let Ok(handler) = Reflect::get(patterns, &JsValue::from_str(&string_value)) {
     if let Some(func) = handler.dyn_ref::<Function>() {
-      return func.call0(&JsValue::NULL).map_err(|e| e);
+      return func.call0(&JsValue::NULL);
     }
   }
 
@@ -365,7 +359,7 @@ pub fn match_pattern(
       let regex = create_regex(regex_pattern, &effective_flags);
       if regex.is_match(&string_value) {
         if let Some(func) = handler.dyn_ref::<Function>() {
-          return func.call0(&JsValue::NULL).map_err(|e| e);
+          return func.call0(&JsValue::NULL);
         }
       }
     }
@@ -377,7 +371,7 @@ pub fn match_pattern(
         let regex = wildcard_to_regex(pattern, case_sensitive);
         if regex.is_match(&value_str) {
           if let Some(func) = handler.dyn_ref::<Function>() {
-            return func.call0(&JsValue::NULL).map_err(|e| e);
+            return func.call0(&JsValue::NULL);
           }
         }
       }
@@ -387,7 +381,7 @@ pub fn match_pattern(
   let default_handler = Reflect::get(patterns, &JsValue::from_str(DEFAULT_HANDLER)).ok();
   if let Some(default_handler) = default_handler {
     if let Some(func) = default_handler.dyn_ref::<Function>() {
-      return func.call0(&JsValue::NULL).map_err(|e| e);
+      return func.call0(&JsValue::NULL);
     }
   }
 
