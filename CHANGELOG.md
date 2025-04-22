@@ -1,5 +1,17 @@
 # Changelog
 
+# [0.3.0](https://github.com/dingff/match-kit/compare/0.2.3...0.3.0) (2025-04-22)
+
+
+### Bug Fixes
+
+* add missing license field in package.json ([7c620d7](https://github.com/dingff/match-kit/commit/7c620d7e54960adea917b14022ffa6a728abaf29))
+
+
+### Performance Improvements
+
+* change static variables to const for better clarity and consistency ([7957c05](https://github.com/dingff/match-kit/commit/7957c051bea960f1e7541eebe30ad4904337d2e3))
+
 ## [0.2.3](https://github.com/dingff/match-kit/compare/0.2.2...0.2.3) (2025-04-21)
 
 
