@@ -16,7 +16,8 @@ regex-lite = "0.1.6"
 wasm-bindgen-test = "0.3.50"
 
 [profile.release]
-opt-level = "z"
-lto = true
+opt-level = 3
+lto = "fat"
 codegen-units = 1
 panic = "abort"
+strip = "symbols"
