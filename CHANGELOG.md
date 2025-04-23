@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.5.0](https://github.com/dingff/match-kit/compare/0.4.0...0.5.0) (2025-04-23)
+
+
+### Performance Improvements
+
+* update release profile settings for optimized performance ([c9a1add](https://github.com/dingff/match-kit/commit/c9a1add6e7e604e42cdc6632972dc11ce357b265))
+
 # [0.4.0](https://github.com/dingff/match-kit/compare/0.3.0...0.4.0) (2025-04-22)
 
 
