@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.6.0](https://github.com/dingff/match-kit/compare/0.5.0...0.6.0) (2025-05-08)
+
+
+### Features
+
+* add custom predicate matching with `when` function and update README ([f25ec12](https://github.com/dingff/match-kit/commit/f25ec127d51807fc2f0561b91901099e1c86ab6c))
+
 # [0.5.0](https://github.com/dingff/match-kit/compare/0.4.0...0.5.0) (2025-04-23)
 
 
