@@ -11,13 +11,14 @@ npm install match-kit
 ## 🚀 Quick Start
 
 ```typescript
-import { match, Some, None, any, not, regex } from 'match-kit';
+import { match, Some, None, any, not, regex, when } from 'match-kit';
 
 const greeting = 'hello';
 
 const result = match(greeting, {
-  hello: () => 'Exact match! 👌',
-  [any('hi', 'hey')]: () => 'Multiple values match! 🔄',
+  hello: () => 'Exact match! 💯',
+  [when(v => typeof v === 'string')]: () => 'Custom predicate match! 🎯',
+  [any('hi', 'hey')]: () => 'Multiple values match! 🔢',
   [not('bye', 'goodbye')]: () => 'Not "bye" or "goodbye" 🚫',
   [regex('^h.*o$')]: () => 'Regular expression match! 🔍',
   'h*o': () => 'Wildcard match! ✨',
@@ -31,12 +32,13 @@ console.log(result);
 
 ## 🧩 Features
 
+- ✅ **Some/None Matching**: Check for presence or absence of a value
 - 💯 **Exact Value Matching**: Match exact string, number, boolean values
+- 🎯 **Custom Predicate Matching**: Match using custom predicate functions
 - 🔢 **Multiple Value Matching**: Match against multiple possible values
 - 🚫 **Negation Matching**: Match when value is NOT one of specified values
 - 🔍 **Regular Expression Matching**: Match using regex patterns
 - ✨ **Wildcard Matching**: Simple wildcard patterns with `*` and `?`
-- ✅ **Some/None Matching**: Check for presence or absence of a value
 - 🔤 **Case Sensitivity Control**: Configure case sensitivity of string matching
 
 ## 📖 API Reference
@@ -82,6 +84,16 @@ Check if a value matches a pattern without executing a handler.
 - Boolean indicating whether the value matches the pattern
 
 ### Pattern Helpers
+
+#### `when(predicate): string`
+
+Create a custom predicate pattern. The handler will be matched only if the provided function returns `true` for the value. This is useful for advanced or flexible matching logic.
+
+```typescript
+match(value, {
+  [when(v => typeof v === 'string' && v.length > 5)]: () => 'String longer than 5 characters!'
+})
+```
 
 #### `any(...values): string`
 
@@ -227,10 +239,11 @@ When multiple patterns could match a value, the following priority rules apply:
 
 1. `Some` and `None` special patterns take highest priority
 2. Exact matches (string/number/boolean)
-3. `any` and `not` patterns
-4. Regular expression patterns
-5. Wildcard patterns (with patterns having fewer wildcards taking precedence)
-6. Default case (`_`) has lowest priority
+3. `when` predicate patterns
+4. `any` and `not` composite value patterns
+5. Regular expression patterns (`regex`)
+6. Wildcard patterns (`*`, `?`, with fewer wildcards having higher priority)
+7. Default case (`_`) has the lowest priority
 
 ## ⚠️ Error Handling
 

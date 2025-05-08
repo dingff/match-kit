@@ -466,3 +466,159 @@ fn test_pattern_key_undefined_null() {
     "null"
   );
 }
+#[wasm_bindgen_test]
+fn test_when_pattern() {
+  let predicate = Function::new_no_args("return arguments[0] % 2 === 0;");
+  let when_pat = when(&predicate).unwrap();
+
+  let patterns = Object::new();
+  let f_even = Function::new_no_args("return 'even';");
+  let f_default = Function::new_no_args("return 'odd';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_pat), &f_even).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  let v_even = JsValue::from(4);
+  let v_odd = JsValue::from(5);
+
+  let result_even = match_pattern(&v_even, &patterns, None).unwrap();
+  assert_eq!(result_even.as_string().unwrap(), "even");
+
+  let result_odd = match_pattern(&v_odd, &patterns, None).unwrap();
+  assert_eq!(result_odd.as_string().unwrap(), "odd");
+}
+
+#[wasm_bindgen_test]
+fn test_when_pattern_multiple_predicates() {
+  let is_even = Function::new_no_args("return arguments[0] % 2 === 0;");
+  let when_even = when(&is_even).unwrap();
+  let gt_10 = Function::new_no_args("return arguments[0] > 10;");
+  let when_gt_10 = when(&gt_10).unwrap();
+
+  let patterns = Object::new();
+  let f_even = Function::new_no_args("return 'even';");
+  let f_gt_10 = Function::new_no_args("return 'gt10';");
+  let f_default = Function::new_no_args("return 'other';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_even), &f_even).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str(&when_gt_10), &f_gt_10).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  let v_even = JsValue::from(4);
+  assert_eq!(
+    match_pattern(&v_even, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "even"
+  );
+  let v_gt_10 = JsValue::from(13);
+  assert_eq!(
+    match_pattern(&v_gt_10, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "gt10"
+  );
+  let v_other = JsValue::from(7);
+  assert_eq!(
+    match_pattern(&v_other, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "other"
+  );
+}
+
+#[wasm_bindgen_test]
+fn test_when_pattern_with_string_predicate() {
+  let contains_foo = Function::new_no_args(
+    "return typeof arguments[0] === 'string' && arguments[0].includes('foo');",
+  );
+  let when_contains_foo = when(&contains_foo).unwrap();
+
+  let patterns = Object::new();
+  let f_foo = Function::new_no_args("return 'has_foo';");
+  let f_default = Function::new_no_args("return 'no_foo';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_contains_foo), &f_foo).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  let v1 = JsValue::from_str("hello foo bar");
+  let v2 = JsValue::from_str("barbaz");
+  assert_eq!(
+    match_pattern(&v1, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "has_foo"
+  );
+  assert_eq!(
+    match_pattern(&v2, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "no_foo"
+  );
+}
+
+#[wasm_bindgen_test]
+fn test_when_pattern_predicate_exception() {
+  let throws = Function::new_no_args("throw new Error('fail');");
+  let when_throws = when(&throws).unwrap();
+
+  let patterns = Object::new();
+  let f_throw = Function::new_no_args("return 'should_not_match';");
+  let f_default = Function::new_no_args("return 'default';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_throws), &f_throw).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  let v = JsValue::from(1);
+  assert_eq!(
+    match_pattern(&v, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "default"
+  );
+}
+
+#[wasm_bindgen_test]
+fn test_when_pattern_no_match_and_no_default() {
+  let always_false = Function::new_no_args("return false;");
+  let when_false = when(&always_false).unwrap();
+
+  let patterns = Object::new();
+  let f_false = Function::new_no_args("return 'should_not_match';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_false), &f_false).unwrap();
+
+  let v = JsValue::from(123);
+  let err = match_pattern(&v, &patterns, None).unwrap_err();
+  assert!(err.as_string().unwrap().contains("No pattern matched"));
+}
+
+#[wasm_bindgen_test]
+fn test_when_pattern_with_bool_type() {
+  let is_true = Function::new_no_args("return arguments[0] === true;");
+  let when_true = when(&is_true).unwrap();
+
+  let patterns = Object::new();
+  let f_true = Function::new_no_args("return 'yes';");
+  let f_default = Function::new_no_args("return 'no';");
+  Reflect::set(&patterns, &JsValue::from_str(&when_true), &f_true).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  let v_true = JsValue::from(true);
+  let v_false = JsValue::from(false);
+  assert_eq!(
+    match_pattern(&v_true, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "yes"
+  );
+  assert_eq!(
+    match_pattern(&v_false, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "no"
+  );
+}

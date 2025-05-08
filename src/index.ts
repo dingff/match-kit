@@ -8,6 +8,7 @@ import {
   not as _not,
   regex as _regex,
   some as _some,
+  when as _when,
 } from './wasm/match_kit'
 
 /**
@@ -21,11 +22,12 @@ export const Some: string = _some()
 export const None: string = _none()
 
 /**
- * Create a pattern that matches if the value does NOT equal any of the provided values.
- * @param values Values to exclude from matching.
+ * Create a pattern that matches if the provided function returns true for the value.
+ * Useful for custom or complex matching logic.
+ * @param predicate A function that receives the value and returns a boolean.
  */
-export function not(...values: MatchValue[]): string {
-  return _not(values)
+export function when(predicate: (value: any) => boolean): string {
+  return _when(predicate)
 }
 
 /**
@@ -34,6 +36,14 @@ export function not(...values: MatchValue[]): string {
  */
 export function any(...values: MatchValue[]): string {
   return _any(values)
+}
+
+/**
+ * Create a pattern that matches if the value does NOT equal any of the provided values.
+ * @param values Values to exclude from matching.
+ */
+export function not(...values: MatchValue[]): string {
+  return _not(values)
 }
 
 /**

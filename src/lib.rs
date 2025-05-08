@@ -1,11 +1,14 @@
 use js_sys::{Function, Object, Reflect};
 use regex_lite::Regex;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use wasm_bindgen::prelude::*;
 
 const SOME_VALUE: &str = "__SOME__";
 const NONE_VALUE: &str = "__NONE__";
 const DEFAULT_HANDLER: &str = "_";
 
+const PREFIX_WHEN: &str = "when::";
 const PREFIX_ANY: &str = "any::";
 const PREFIX_NOT: &str = "not::";
 const PREFIX_REGEX: &str = "regex::";
@@ -44,6 +47,60 @@ fn js_typeof(value: &JsValue) -> JsType {
     JsType::Undefined
   } else {
     JsType::Unknown
+  }
+}
+
+fn get_global_storage() -> Result<Object, JsValue> {
+  let global = js_sys::global();
+
+  let storage_key = JsValue::from_str("__whenPredicates");
+  let storage = match Reflect::get(&global, &storage_key) {
+    Ok(storage) if !storage.is_undefined() => storage
+      .dyn_into::<Object>()
+      .map_err(|_| JsValue::from_str("Invalid storage object"))?,
+    _ => {
+      let new_storage = Object::new();
+      Reflect::set(&global, &storage_key, &new_storage)?;
+      new_storage
+    }
+  };
+
+  Ok(storage)
+}
+
+fn calculate_hash(s: &str) -> String {
+  let mut hasher = DefaultHasher::new();
+  s.hash(&mut hasher);
+  hasher.finish().to_string()
+}
+
+#[wasm_bindgen]
+pub fn when(predicate: &Function) -> Result<String, JsValue> {
+  if !predicate.is_function() {
+    return Err(JsValue::from_str("when() requires a function as argument"));
+  }
+
+  let func_str = match predicate.to_string().as_string() {
+    Some(str_val) => str_val,
+    None => return Err(JsValue::from_str("Failed to convert function to string")),
+  };
+
+  let hash = calculate_hash(&func_str);
+
+  let storage = get_global_storage()?;
+
+  Reflect::set(&storage, &JsValue::from_str(&hash), predicate)?;
+
+  Ok(format!("{}{}", PREFIX_WHEN, hash))
+}
+
+fn get_predicate_function(function_hash: &str) -> Result<Option<Function>, JsValue> {
+  let storage = get_global_storage()?;
+
+  match Reflect::get(&storage, &JsValue::from_str(function_hash)) {
+    Ok(value) if !value.is_undefined() => Ok(value.dyn_into::<Function>().ok()),
+    Ok(_) => Ok(None),
+    Err(e) => Err(e),
   }
 }
 
@@ -254,6 +311,7 @@ fn try_composite_pattern(
 }
 
 struct PatternGroups {
+  when: Vec<(String, JsValue)>,
   any: Vec<(String, JsValue)>,
   not: Vec<(String, JsValue)>,
   regex: Vec<(String, JsValue)>,
@@ -264,6 +322,7 @@ impl PatternGroups {
     let keys = Object::keys(obj);
     let length = keys.length();
 
+    let mut when = Vec::with_capacity(length as usize);
     let mut any = Vec::with_capacity(length as usize);
     let mut not = Vec::with_capacity(length as usize);
     let mut regex = Vec::with_capacity(length as usize);
@@ -276,7 +335,9 @@ impl PatternGroups {
           continue;
         }
         if let Ok(value) = Reflect::get(obj, &key) {
-          if key_str.starts_with(PREFIX_ANY) {
+          if key_str.starts_with(PREFIX_WHEN) {
+            when.push((key_str, value));
+          } else if key_str.starts_with(PREFIX_ANY) {
             any.push((key_str, value));
           } else if key_str.starts_with(PREFIX_NOT) {
             not.push((key_str, value));
@@ -296,6 +357,7 @@ impl PatternGroups {
     });
 
     Self {
+      when,
       any,
       not,
       regex,
@@ -339,6 +401,20 @@ pub fn match_pattern(
   }
 
   let pattern_groups = PatternGroups::from_object(patterns);
+
+  for (pattern, handler) in &pattern_groups.when {
+    let function_hash = &pattern[PREFIX_WHEN.len()..];
+
+    if let Ok(Some(predicate)) = get_predicate_function(function_hash) {
+      if let Ok(result) = predicate.call1(&JsValue::NULL, value) {
+        if result.as_bool() == Some(true) {
+          if let Some(handler_func) = handler.dyn_ref::<Function>() {
+            return handler_func.call0(&JsValue::NULL);
+          }
+        }
+      }
+    }
+  }
 
   if let Some(result) = try_composite_pattern(
     value,
@@ -452,7 +528,7 @@ pub fn matches(value: &JsValue, pattern: &JsValue, options: Option<Object>) -> b
   );
 
   match match_pattern(value, &patterns, options) {
-    Ok(result) => !result.is_falsy(),
+    Ok(result) => result.as_bool().unwrap(),
     Err(_) => false,
   }
 }
