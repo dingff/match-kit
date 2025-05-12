@@ -622,3 +622,112 @@ fn test_when_pattern_with_bool_type() {
     "no"
   );
 }
+#[wasm_bindgen_test]
+fn test_when_pattern_with_direct_boolean() {
+  // Test when function with direct boolean value instead of a predicate function
+  let when_true = when(&JsValue::from(true)).unwrap();
+  let when_false = when(&JsValue::from(false)).unwrap();
+
+  let patterns = Object::new();
+  let f_true_pattern = Function::new_no_args("return 'matches_true_pattern';");
+  let f_false_pattern = Function::new_no_args("return 'matches_false_pattern';");
+  let f_default = Function::new_no_args("return 'default';");
+
+  Reflect::set(&patterns, &JsValue::from_str(&when_true), &f_true_pattern).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str(&when_false), &f_false_pattern).unwrap();
+  Reflect::set(&patterns, &JsValue::from_str("_"), &f_default).unwrap();
+
+  // Test with different values - any value should match the true pattern
+  // because the condition is always true (not evaluating the value)
+  let v1 = JsValue::from(42);
+  let v2 = JsValue::from_str("hello");
+  let v3 = JsValue::from(true);
+  let v4 = JsValue::from(false);
+  let v_null = JsValue::NULL;
+  let v_undefined = JsValue::UNDEFINED;
+
+  // All values should match the when(true) pattern as it's always true
+  assert_eq!(
+    match_pattern(&v1, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  assert_eq!(
+    match_pattern(&v2, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  assert_eq!(
+    match_pattern(&v3, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  assert_eq!(
+    match_pattern(&v4, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  assert_eq!(
+    match_pattern(&v_null, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  assert_eq!(
+    match_pattern(&v_undefined, &patterns, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "matches_true_pattern"
+  );
+
+  // Create a new patterns object with only the when(false) pattern
+  // to test that it never matches (since false is always false)
+  let patterns_false = Object::new();
+  Reflect::set(
+    &patterns_false,
+    &JsValue::from_str(&when_false),
+    &f_false_pattern,
+  )
+  .unwrap();
+  Reflect::set(&patterns_false, &JsValue::from_str("_"), &f_default).unwrap();
+
+  // No value should match the when(false) pattern as it's always false
+  assert_eq!(
+    match_pattern(&v1, &patterns_false, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "default"
+  );
+
+  assert_eq!(
+    match_pattern(&v3, &patterns_false, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "default"
+  );
+
+  assert_eq!(
+    match_pattern(&v_null, &patterns_false, None)
+      .unwrap()
+      .as_string()
+      .unwrap(),
+    "default"
+  );
+}

@@ -18,6 +18,7 @@ const greeting = 'hello';
 const result = match(greeting, {
   hello: () => 'Exact match! 💯',
   [when(v => typeof v === 'string')]: () => 'Custom predicate match! 🎯',
+  [when(greeting.length > 3)]: () => 'Boolean condition met! 🟢',
   [any('hi', 'hey')]: () => 'Multiple values match! 🔢',
   [not('bye', 'goodbye')]: () => 'Not "bye" or "goodbye" 🚫',
   [regex('^h.*o$')]: () => 'Regular expression match! 🔍',
@@ -34,7 +35,7 @@ console.log(result);
 
 - ✅ **Some/None Matching**: Check for presence or absence of a value
 - 💯 **Exact Value Matching**: Match exact string, number, boolean values
-- 🎯 **Custom Predicate Matching**: Match using custom predicate functions
+- 🎯 **Custom Predicate Matching**: Match using custom predicate functions or boolean values
 - 🔢 **Multiple Value Matching**: Match against multiple possible values
 - 🚫 **Negation Matching**: Match when value is NOT one of specified values
 - 🔍 **Regular Expression Matching**: Match using regex patterns
@@ -85,14 +86,26 @@ Check if a value matches a pattern without executing a handler.
 
 ### Pattern Helpers
 
-#### `when(predicate): string`
+#### `when(condition: ((value) => boolean) | boolean): string`
 
-Create a custom predicate pattern. The handler will be matched only if the provided function returns `true` for the value. This is useful for advanced or flexible matching logic.
+Create a custom predicate pattern.
+- If a **function** is provided, the handler will be matched only if the function returns `true` for the input value. This is useful for advanced or flexible matching logic based on the value itself.
+- If a **boolean** is provided, the handler will be matched if the boolean is `true`. This is useful for incorporating pre-calculated conditions or simple boolean flags into the matching logic.
 
 ```typescript
+// Using a predicate function
 match(value, {
   [when(v => typeof v === 'string' && v.length > 5)]: () => 'String longer than 5 characters!'
-})
+});
+
+// Using a boolean value
+const userIsAdmin = true;
+const resourceIsProtected = true;
+match(action, {
+  [when(userIsAdmin && resourceIsProtected)]: () => 'Admin access to protected resource granted!',
+  [when(userIsAdmin && !resourceIsProtected)]: () => 'Admin access to public resource granted!',
+  _: () => 'Access denied or action not applicable.'
+});
 ```
 
 #### `any(...values): string`
@@ -199,6 +212,21 @@ const result = match(input, {
 // Result: 'Letters followed by numbers'
 ```
 
+### Using `when` with a boolean condition
+
+```typescript
+const isAuthenticated = true;
+const userRole = 'editor';
+
+const permission = match(userRole, {
+  [when(isAuthenticated && userRole === 'admin')]: () => 'Full Access',
+  [when(isAuthenticated && userRole === 'editor')]: () => 'Can Edit Content',
+  [when(isAuthenticated)]: () => 'Logged In, Basic Access',
+  _: () => 'Guest Access'
+});
+// Result: 'Can Edit Content'
+```
+
 ### Option Objects and Case-Insensitive Matching
 
 ```typescript
@@ -239,7 +267,7 @@ When multiple patterns could match a value, the following priority rules apply:
 
 1. `Some` and `None` special patterns take highest priority
 2. Exact matches (string/number/boolean)
-3. `when` predicate patterns
+3. `when` predicate patterns (both function and boolean variants)
 4. `any` and `not` composite value patterns
 5. Regular expression patterns (`regex`)
 6. Wildcard patterns (`*`, `?`, with fewer wildcards having higher priority)

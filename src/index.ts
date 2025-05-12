@@ -22,12 +22,12 @@ export const Some: string = _some()
 export const None: string = _none()
 
 /**
- * Create a pattern that matches if the provided function returns true for the value.
+ * Create a pattern that matches if the provided condition (a predicate function or a boolean value) evaluates to true.
  * Useful for custom or complex matching logic.
- * @param predicate A function that receives the value and returns a boolean.
+ * @param condition A function that receives the value and returns a boolean, or a boolean value directly.
  */
-export function when(predicate: (value: any) => boolean): string {
-  return _when(predicate)
+export function when(condition: ((value: any) => boolean) | boolean): string {
+  return _when(condition)
 }
 
 /**

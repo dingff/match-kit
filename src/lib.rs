@@ -75,23 +75,23 @@ fn calculate_hash(s: &str) -> String {
 }
 
 #[wasm_bindgen]
-pub fn when(predicate: &Function) -> Result<String, JsValue> {
-  if !predicate.is_function() {
-    return Err(JsValue::from_str("when() requires a function as argument"));
+pub fn when(condition: &JsValue) -> Result<String, JsValue> {
+  if let Some(predicate_fn) = condition.dyn_ref::<Function>() {
+    let func_str = predicate_fn
+      .to_string()
+      .as_string()
+      .ok_or_else(|| JsValue::from_str("Failed to convert function to string"))?;
+    let hash = calculate_hash(&func_str);
+    let storage = get_global_storage()?;
+    Reflect::set(&storage, &JsValue::from_str(&hash), predicate_fn)?;
+    Ok(format!("{}{}", PREFIX_WHEN, hash))
+  } else if let Some(bool_val) = condition.as_bool() {
+    Ok(format!("{}{}", PREFIX_WHEN, bool_val))
+  } else {
+    Err(JsValue::from_str(
+      "when() requires a function or boolean as argument",
+    ))
   }
-
-  let func_str = match predicate.to_string().as_string() {
-    Some(str_val) => str_val,
-    None => return Err(JsValue::from_str("Failed to convert function to string")),
-  };
-
-  let hash = calculate_hash(&func_str);
-
-  let storage = get_global_storage()?;
-
-  Reflect::set(&storage, &JsValue::from_str(&hash), predicate)?;
-
-  Ok(format!("{}{}", PREFIX_WHEN, hash))
 }
 
 fn get_predicate_function(function_hash: &str) -> Result<Option<Function>, JsValue> {
@@ -403,13 +403,17 @@ pub fn match_pattern(
   let pattern_groups = PatternGroups::from_object(patterns);
 
   for (pattern, handler) in &pattern_groups.when {
+    if pattern == &format!("{}{}", PREFIX_WHEN, true) {
+      if let Some(func) = handler.dyn_ref::<Function>() {
+        return func.call0(&JsValue::NULL);
+      }
+    }
     let function_hash = &pattern[PREFIX_WHEN.len()..];
-
     if let Ok(Some(predicate)) = get_predicate_function(function_hash) {
       if let Ok(result) = predicate.call1(&JsValue::NULL, value) {
         if result.as_bool() == Some(true) {
-          if let Some(handler_func) = handler.dyn_ref::<Function>() {
-            return handler_func.call0(&JsValue::NULL);
+          if let Some(func) = handler.dyn_ref::<Function>() {
+            return func.call0(&JsValue::NULL);
           }
         }
       }
