@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/dingff/match-kit/compare/0.6.0...0.6.1) (2025-05-12)
+
+
+### Features
+
+* enhance `when` function to accept boolean values ([52eeb81](https://github.com/dingff/match-kit/commit/52eeb81383cdb3a35d383104702a418f212d4540))
+
 # [0.6.0](https://github.com/dingff/match-kit/compare/0.5.0...0.6.0) (2025-05-08)
 
 
