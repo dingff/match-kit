@@ -95,16 +95,16 @@ Create a custom predicate pattern.
 ```typescript
 // Using a predicate function
 match(value, {
-  [when(v => typeof v === 'string' && v.length > 5)]: () => 'String longer than 5 characters!'
+  [when(v => typeof v === 'string' && v.length > 5)]: () => {
+    console.log('String longer than 5 characters!');
+  }
 });
 
 // Using a boolean value
-const userIsAdmin = true;
-const resourceIsProtected = true;
-match(action, {
-  [when(userIsAdmin && resourceIsProtected)]: () => 'Admin access to protected resource granted!',
-  [when(userIsAdmin && !resourceIsProtected)]: () => 'Admin access to public resource granted!',
-  _: () => 'Access denied or action not applicable.'
+match(value, {
+  [when(typeof value === 'string' && value.length > 5)]: () => {
+    console.log('String longer than 5 characters!');
+  }
 });
 ```
 
@@ -241,13 +241,14 @@ const result = match(command, {
 // Result: 'Displaying help information' (despite case difference)
 ```
 
-### Using ifLet for Conditional Logic
+### Using `ifLet` for Conditional Logic
 
 ```typescript
 const username = getUserInput(); // Could be a string or undefined
 
-const welcomeMessage = ifLet(username, Some, () => `Welcome back, ${username}!`) || 
-                       'Welcome, guest!';
+const welcomeMessage = ifLet(username, Some, () => {
+  return `Welcome back, ${username}!`;
+}) || 'Welcome, guest!';
 ```
 
 ### Handling Optional Values
