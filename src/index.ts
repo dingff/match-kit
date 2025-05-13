@@ -26,8 +26,8 @@ export const None: string = _none()
  * Useful for custom or complex matching logic.
  * @param condition A function that receives the value and returns a boolean, or a boolean value directly.
  */
-export function when(condition: ((value: any) => boolean) | boolean): string {
-  return _when(condition)
+export function when<T>(condition: ((value: T) => boolean) | boolean): string {
+  return _when<T>(condition)
 }
 
 /**

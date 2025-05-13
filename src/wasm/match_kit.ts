@@ -2,7 +2,7 @@ import type { MatchValue, Options, PatternHandler, PatternMap } from '../types'
 
 export declare function some(): string
 export declare function none(): string
-export declare function when(condition: ((value: any) => boolean) | boolean): string
+export declare function when<T>(condition: ((value: T) => boolean) | boolean): string
 export declare function any(args: MatchValue[]): string
 export declare function not(args: MatchValue[]): string
 export declare function regex(pattern: string, flags?: string): string
