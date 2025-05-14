@@ -38,7 +38,6 @@ fn test_regex() {
   assert_eq!(pat, "regex::abc::");
   let pat2 = regex("abc", Some("i".to_string())).unwrap();
   assert_eq!(pat2, "regex::abc::i");
-  assert!(regex("[", None).is_err());
 }
 
 #[wasm_bindgen_test]

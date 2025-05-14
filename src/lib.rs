@@ -1,5 +1,4 @@
-use js_sys::{Function, Object, Reflect};
-use regex_lite::Regex;
+use js_sys::{Function, Object, Reflect, RegExp};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use wasm_bindgen::prelude::*;
@@ -215,28 +214,10 @@ pub fn any(args: &js_sys::Array) -> Result<String, JsValue> {
 pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
   let flags_str = flags.unwrap_or_default();
 
-  if flags_str.chars().any(|c| !"ims".contains(c)) {
-    return Err(JsValue::from_str(
-      "Only 'i', 'm', 's' flags are supported in regex",
-    ));
-  }
-
-  let regex_str = if flags_str.is_empty() {
-    pattern.to_string()
-  } else {
-    format!("(?{}){}", flags_str, pattern)
-  };
-
-  match Regex::new(&regex_str) {
-    Ok(_) => Ok(format!("{}{}::{}", PREFIX_REGEX, pattern, flags_str)),
-    Err(e) => Err(JsValue::from_str(&format!(
-      "Invalid regex pattern: {} with flags: {} - {}",
-      pattern, flags_str, e
-    ))),
-  }
+  Ok(format!("{}{}::{}", PREFIX_REGEX, pattern, flags_str))
 }
 
-fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
+fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> RegExp {
   let mut regex_str = String::with_capacity(pattern.len() * 2);
   for c in pattern.chars() {
     match c {
@@ -252,33 +233,9 @@ fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> Regex {
 
   regex_str = format!("^{}$", regex_str);
 
-  let regex_str = if !case_sensitive {
-    format!("(?i){}", regex_str)
-  } else {
-    regex_str
-  };
+  let flags = if !case_sensitive { "i" } else { "" };
 
-  Regex::new(&regex_str).unwrap()
-}
-
-fn create_regex(pattern: &str, flags: &str) -> Regex {
-  let mut prefix = String::from("(?");
-  let mut has_flag = false;
-  for ch in flags.chars() {
-    match ch {
-      'i' | 'm' | 's' => {
-        prefix.push(ch);
-        has_flag = true;
-      }
-      _ => {}
-    }
-  }
-  if has_flag {
-    prefix.push(')');
-    Regex::new(&format!("{}{}", prefix, pattern)).unwrap()
-  } else {
-    Regex::new(pattern).unwrap()
-  }
+  RegExp::new(&regex_str, flags)
 }
 
 fn try_composite_pattern(
@@ -452,8 +409,9 @@ pub fn match_pattern(
         flags.to_string()
       };
 
-      let regex = create_regex(regex_pattern, &effective_flags);
-      if regex.is_match(&string_value) {
+      let regex = RegExp::new(regex_pattern, &effective_flags);
+
+      if regex.test(&string_value) {
         if let Some(func) = handler.dyn_ref::<Function>() {
           return func.call0(&JsValue::NULL);
         }
@@ -465,7 +423,8 @@ pub fn match_pattern(
     if let Some(value_str) = value.as_string() {
       for (pattern, handler) in &pattern_groups.wildcard {
         let regex = wildcard_to_regex(pattern, case_sensitive);
-        if regex.is_match(&value_str) {
+
+        if regex.test(&value_str) {
           if let Some(func) = handler.dyn_ref::<Function>() {
             return func.call0(&JsValue::NULL);
           }
