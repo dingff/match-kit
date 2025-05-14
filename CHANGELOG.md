@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.7.0](https://github.com/dingff/match-kit/compare/0.6.2...0.7.0) (2025-05-14)
+
+
+### Performance Improvements
+
+* replace regex-lite with js_sys::RegExp ([a457e18](https://github.com/dingff/match-kit/commit/a457e18c3971a05a59f2f659ed6309a01623d47d))
+
 ## [0.6.2](https://github.com/dingff/match-kit/compare/0.6.1...0.6.2) (2025-05-13)
 
 
