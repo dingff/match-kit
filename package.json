@@ -8,15 +8,7 @@
     "url": "git+https://github.com/dingff/match-kit.git"
   },
   "license": "MIT",
-  "keywords": [
-    "pattern matching",
-    "pattern",
-    "match",
-    "matching",
-    "typescript",
-    "type safe",
-    "switch"
-  ],
+  "keywords": ["pattern-matching", "pattern", "match", "matching", "typescript", "switch"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
