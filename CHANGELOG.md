@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/dingff/match-kit/compare/0.7.0...0.7.1) (2025-06-05)
+
+
+### Bug Fixes
+
+* enhance documentation for pattern matching functions ([234a3ce](https://github.com/dingff/match-kit/commit/234a3ce63bc598bbaa332e47a516b8d5f93cae17))
+* streamline keywords in package.json for consistency ([42442ac](https://github.com/dingff/match-kit/commit/42442ac3fbd17d728a83ed1fdb13cd5d2bffec97))
+
 # [0.7.0](https://github.com/dingff/match-kit/compare/0.6.2...0.7.0) (2025-05-14)
 
 
