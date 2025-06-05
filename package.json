@@ -33,11 +33,11 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@release-it/conventional-changelog": "^10.0.1",
-    "@rslib/core": "^0.6.9",
-    "@types/node": "^22.15.17",
+    "@rslib/core": "^0.9.1",
+    "@types/node": "^22.15.29",
     "husky": "^9.1.7",
-    "lint-staged": "^16.0.0",
-    "release-it": "^19.0.2",
+    "lint-staged": "^16.1.0",
+    "release-it": "^19.0.3",
     "typescript": "^5.8.3"
   },
   "commitlint": {
