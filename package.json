@@ -1,35 +1,44 @@
 {
   "name": "match-kit",
   "version": "0.7.1",
-  "type": "module",
   "description": "Introduce pattern matching to TypeScript.",
+  "keywords": [
+    "match",
+    "matching",
+    "pattern",
+    "pattern-matching",
+    "switch",
+    "typescript"
+  ],
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dingff/match-kit.git"
   },
-  "license": "MIT",
-  "keywords": ["pattern-matching", "pattern", "match", "matching", "typescript", "switch"],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build:wasm": "wasm-pack build --no-typescript --target bundler --release --out-dir ./dist/wasm --no-pack",
     "build": "rslib build && npm run build:wasm && rm -f ./dist/wasm/.gitignore",
-    "check": "biome check --write",
     "dev": "rslib build --watch",
-    "format": "biome format --write",
     "test": "wasm-pack test --chrome",
-    "release": "npm run build && release-it --only-version",
+    "release": "release-it --only-version",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@release-it/conventional-changelog": "^10.0.1",
@@ -37,13 +46,40 @@
     "@types/node": "^22.15.29",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.0",
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0",
     "release-it": "^19.0.3",
     "typescript": "^5.8.3"
   },
-  "commitlint": {
-    "extends": ["@commitlint/config-conventional"]
-  },
   "lint-staged": {
-    "*": ["biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"]
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "oxlint --fix",
+    "*": "oxfmt --no-error-on-unmatched-pattern"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release v${version}"
+    },
+    "github": {
+      "release": true,
+      "releaseName": "v${version}",
+      "web": true
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "angular",
+        "infile": "CHANGELOG.md",
+        "ignoreRecommendedBump": true
+      }
+    },
+    "hooks": {
+      "before:init": [
+        "pnpm run build"
+      ]
+    }
   }
 }
