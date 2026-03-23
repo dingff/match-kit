@@ -14,4 +14,7 @@ export default defineConfig({
       bundle: false,
     },
   ],
+  output: {
+    target: 'web',
+  },
 })
