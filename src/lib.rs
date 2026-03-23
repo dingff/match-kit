@@ -213,8 +213,32 @@ pub fn any(args: &js_sys::Array) -> Result<String, JsValue> {
 #[wasm_bindgen]
 pub fn regex(pattern: &str, flags: Option<String>) -> Result<String, JsValue> {
   let flags_str = flags.unwrap_or_default();
+  let encoded_pattern = encode_regex_key_part(pattern);
+  let encoded_flags = encode_regex_key_part(&flags_str);
 
-  Ok(format!("{}{}::{}", PREFIX_REGEX, pattern, flags_str))
+  Ok(format!(
+    "{}{}::{}",
+    PREFIX_REGEX, encoded_pattern, encoded_flags
+  ))
+}
+
+fn encode_regex_key_part(input: &str) -> String {
+  input.replace('%', "%25").replace(':', "%3A")
+}
+
+fn decode_regex_key_part(input: &str) -> String {
+  input.replace("%3A", ":").replace("%25", "%")
+}
+
+fn parse_regex_key(pattern: &str) -> Option<(String, String)> {
+  let payload = pattern.strip_prefix(PREFIX_REGEX)?;
+  let mut parts = payload.splitn(2, "::");
+  let encoded_pattern = parts.next()?;
+  let encoded_flags = parts.next().unwrap_or_default();
+  Some((
+    decode_regex_key_part(encoded_pattern),
+    decode_regex_key_part(encoded_flags),
+  ))
 }
 
 fn wildcard_to_regex(pattern: &str, case_sensitive: bool) -> RegExp {
@@ -398,18 +422,14 @@ pub fn match_pattern(
   }
 
   for (pattern, handler) in &pattern_groups.regex {
-    let parts: Vec<&str> = pattern.splitn(3, "::").collect();
-    if parts.len() >= 2 {
-      let regex_pattern = parts[1];
-      let flags = if parts.len() > 2 { parts[2] } else { "" };
-
+    if let Some((regex_pattern, flags)) = parse_regex_key(pattern) {
       let effective_flags = if !case_sensitive && !flags.contains('i') {
         format!("{}i", flags)
       } else {
-        flags.to_string()
+        flags
       };
 
-      let regex = RegExp::new(regex_pattern, &effective_flags);
+      let regex = RegExp::new(&regex_pattern, &effective_flags);
 
       if regex.test(&string_value) {
         if let Some(func) = handler.dyn_ref::<Function>() {
